@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2
+
+- Clarified Fusion mode semantics: ON means forced for every normal prompt; OFF means the tool remains available for model-decided use.
+- Strengthened tool guidance to match OpenRouter: use fusion only for tasks that benefit from multiple perspectives, critique, research, comparison, or high-stakes decisions.
+- Footer/status now says `Fusion forced` or `Fusion available` instead of ambiguous on/off wording.
+
 ## 0.3.1
 
 - Fixed footer/run mismatch where an explicit 4-model session panel displayed as 4 in the footer but only ran 3 models.

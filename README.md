@@ -106,7 +106,7 @@ answers from multiple perspectives.
 Daily use is intentionally small:
 
 - `/fusion-setup` — choose panel and judge.
-- `/fusion` — toggle Fusion mode on/off for the current session.
+- `/fusion` — toggle **forced Fusion mode** on/off for the current session.
 - `/fusion <prompt>` — force Fusion for one prompt, then let the active pi model answer normally.
 - `/fusion-status` — show current mode, panel, and judge.
 
@@ -142,7 +142,9 @@ Turn session mode on/off:
 /fusion
 ```
 
-When Fusion mode is on, normal prompts are automatically routed through the fusion tool before the active pi model answers.
+When forced Fusion mode is on, normal prompts are automatically routed through the fusion tool before the active pi model answers.
+
+When forced Fusion mode is off, the `fusion` tool is still available. The active model may invoke it when the task genuinely benefits from multiple perspectives, critique, research, comparison, or expensive-to-be-wrong analysis.
 
 Force Fusion once without changing the toggle:
 

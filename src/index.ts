@@ -104,7 +104,7 @@ function fusionFooterText(selectedIds: Set<string>, judgeId: string | undefined,
 	if (selectedIds.size === 0) return undefined;
 	const panel = Array.from(selectedIds);
 	const judge = judgeId && selectedIds.has(judgeId) ? judgeId : panel[0];
-	return `Fusion ${enabled ? "on" : "off"} • ${panel.length} panel • judge ${judge}`;
+	return `${enabled ? "Fusion forced" : "Fusion available"} • ${panel.length} panel • judge ${judge}`;
 }
 
 function installFusionFooter(
@@ -297,7 +297,9 @@ export default function (pi: ExtensionAPI) {
 		].join(" "),
 		promptSnippet: "Run multi-model deliberation on complex research, critique, or comparison prompts.",
 		promptGuidelines: [
-			"Use the fusion tool when the user asks for multiple perspectives, expert critique, research synthesis, or comparison of complex topics.",
+			"Use the fusion tool only when a task genuinely benefits from multiple perspectives: research, expert critique, multi-domain analysis, compare/contrast decisions, architecture trade-offs, or anything where being wrong is expensive.",
+			"Do not use the fusion tool for simple tactical prompts, straightforward edits, routine file operations, or questions a single model can answer well.",
+			"When conversation context matters, include the relevant context in the fusion prompt; panel and judge calls do not automatically see the full conversation thread.",
 			"The fusion tool accepts a prompt and optional model overrides; it does not need file paths unless the prompt itself references them.",
 		],
 		parameters: FusionParams,
@@ -323,7 +325,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("fusion", {
-		description: "Toggle fusion mode, or force fusion for one prompt with /fusion <prompt>",
+		description: "Toggle forced fusion mode, or force fusion for one prompt with /fusion <prompt>",
 		handler: async (args, ctx) => {
 			const prompt = args.trim();
 			const sessionState = restoreSessionState(ctx);
@@ -597,11 +599,11 @@ export default function (pi: ExtensionAPI) {
 			if (!state?.selectedIds.size) {
 				lines.push("Fusion is not set up. Run /fusion-setup.");
 			} else {
-				lines.push(`Mode: ${state.enabled ? "on" : "off"}`);
+				lines.push(`Mode: ${state.enabled ? "forced for every normal prompt" : "available when the active model decides it is useful"}`);
 				lines.push(`Panel: ${Array.from(state.selectedIds).join(", ")}`);
 				lines.push(`Judge: ${state.judgeId ?? Array.from(state.selectedIds)[0]}`);
 				lines.push("");
-				lines.push("Use /fusion to toggle, /fusion <prompt> to force once, /fusion-setup to change models.");
+				lines.push("Use /fusion to toggle forced mode, /fusion <prompt> to force once, /fusion-setup to change models.");
 				updateStatus(pi, ctx, state.selectedIds, state.judgeId, state.enabled ?? false);
 			}
 			const text = lines.join("\n");
