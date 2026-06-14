@@ -82,8 +82,12 @@ function updateStatus(
 		return;
 	}
 	const judge = judgeId && selectedIds.has(judgeId) ? judgeId : panel[0];
-	ctx.ui.setStatus("fusion", `${panel.length} panel, judge: ${judge}`);
-	ctx.ui.setWidget("fusion-panel", [`Panel: ${panel.join(", ")}`, `Judge: ${judge}`]);
+	ctx.ui.setStatus("fusion", undefined);
+	ctx.ui.setWidget(
+		"fusion-panel",
+		[`Fusion: ${panel.length} panel • judge ${judge}`],
+		{ placement: "belowEditor" },
+	);
 }
 
 function persistSessionState(pi: ExtensionAPI, selectedIds: Set<string>, judgeId: string | undefined) {
