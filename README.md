@@ -31,13 +31,13 @@ pi install npm:pi-fusion
 ### GitHub package
 
 ```bash
-pi install git:github.com/synthetic-recon/pi-fusion
+pi install git:github.com/syntheticrecon/pi-fusion
 ```
 
 ### Local development checkout
 
 ```bash
-git clone https://github.com/synthetic-recon/pi-fusion.git
+git clone https://github.com/syntheticrecon/pi-fusion.git
 cd pi-fusion
 npm install
 npm run check
