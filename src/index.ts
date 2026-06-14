@@ -9,6 +9,7 @@
  */
 
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { Type } from "typebox";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -70,24 +71,129 @@ const FusionParams = Type.Object(
 	{ description: "Multi-model deliberation parameters" },
 );
 
-function updateStatus(
+function formatTokens(count: number): string {
+	if (count < 1000) return count.toString();
+	if (count < 10000) return `${(count / 1000).toFixed(1)}k`;
+	if (count < 1000000) return `${Math.round(count / 1000)}k`;
+	if (count < 10000000) return `${(count / 1000000).toFixed(1)}M`;
+	return `${Math.round(count / 1000000)}M`;
+}
+
+function formatCwd(cwd: string): string {
+	const home = process.env.HOME || process.env.USERPROFILE;
+	if (home && cwd === home) return "~";
+	if (home && cwd.startsWith(`${home}/`)) return `~/${cwd.slice(home.length + 1)}`;
+	return cwd;
+}
+
+function alignLine(left: string, right: string, width: number): string {
+	const leftWidth = visibleWidth(left);
+	const rightWidth = visibleWidth(right);
+	if (leftWidth + 2 + rightWidth <= width) {
+		return left + " ".repeat(width - leftWidth - rightWidth) + right;
+	}
+	const availableLeft = Math.max(0, width - rightWidth - 2);
+	if (availableLeft > 0) {
+		const truncatedLeft = truncateToWidth(left, availableLeft, "...");
+		return truncatedLeft + " ".repeat(Math.max(1, width - visibleWidth(truncatedLeft) - rightWidth)) + right;
+	}
+	return truncateToWidth(right, width, "");
+}
+
+function fusionFooterText(selectedIds: Set<string>, judgeId: string | undefined): string | undefined {
+	if (selectedIds.size === 0) return undefined;
+	const panel = Array.from(selectedIds);
+	const judge = judgeId && selectedIds.has(judgeId) ? judgeId : panel[0];
+	return `Fusion: ${panel.length} panel • judge ${judge}`;
+}
+
+function installFusionFooter(
+	pi: ExtensionAPI,
 	ctx: ExtensionContext,
 	selectedIds: Set<string>,
 	judgeId: string | undefined,
 ) {
-	const panel = Array.from(selectedIds);
-	if (panel.length === 0) {
-		ctx.ui.setStatus("fusion", undefined);
-		ctx.ui.setWidget("fusion-panel", undefined);
+	ctx.ui.setStatus("fusion", undefined);
+	ctx.ui.setWidget("fusion-panel", undefined);
+
+	const fusionText = fusionFooterText(selectedIds, judgeId);
+	if (!fusionText) {
+		ctx.ui.setFooter(undefined);
 		return;
 	}
-	const judge = judgeId && selectedIds.has(judgeId) ? judgeId : panel[0];
-	ctx.ui.setStatus("fusion", undefined);
-	ctx.ui.setWidget(
-		"fusion-panel",
-		[`Fusion: ${panel.length} panel • judge ${judge}`],
-		{ placement: "belowEditor" },
-	);
+
+	ctx.ui.setFooter((tui, theme, footerData) => {
+		const unsub = footerData.onBranchChange(() => tui.requestRender());
+		return {
+			dispose: unsub,
+			invalidate() {},
+			render(width: number): string[] {
+				let input = 0;
+				let output = 0;
+				let cacheRead = 0;
+				let cacheWrite = 0;
+				let cost = 0;
+				let latestCacheHitRate: number | undefined;
+
+				for (const entry of ctx.sessionManager.getEntries()) {
+					if (entry.type === "message" && entry.message.role === "assistant") {
+						const usage = entry.message.usage;
+						input += usage.input;
+						output += usage.output;
+						cacheRead += usage.cacheRead;
+						cacheWrite += usage.cacheWrite;
+						cost += usage.cost.total;
+						const latestPromptTokens = usage.input + usage.cacheRead + usage.cacheWrite;
+						latestCacheHitRate = latestPromptTokens > 0 ? (usage.cacheRead / latestPromptTokens) * 100 : undefined;
+					}
+				}
+
+				const contextUsage = ctx.getContextUsage();
+				const contextWindow = contextUsage?.contextWindow ?? ctx.model?.contextWindow ?? 0;
+				const contextPercent = contextUsage?.percent === null ? "?" : (contextUsage?.percent ?? 0).toFixed(1);
+				const stats: string[] = [];
+				if (input) stats.push(`↑${formatTokens(input)}`);
+				if (output) stats.push(`↓${formatTokens(output)}`);
+				if (cacheRead) stats.push(`R${formatTokens(cacheRead)}`);
+				if (cacheWrite) stats.push(`W${formatTokens(cacheWrite)}`);
+				if ((cacheRead > 0 || cacheWrite > 0) && latestCacheHitRate !== undefined) {
+					stats.push(`CH${latestCacheHitRate.toFixed(1)}%`);
+				}
+				const usingSubscription = ctx.model ? ctx.modelRegistry.isUsingOAuth(ctx.model) : false;
+				if (cost || usingSubscription) stats.push(`$${cost.toFixed(3)}${usingSubscription ? " (sub)" : ""}`);
+				stats.push(`${contextPercent}%/${formatTokens(contextWindow)} (auto)`);
+
+				let cwd = formatCwd(ctx.cwd);
+				const branch = footerData.getGitBranch();
+				if (branch) cwd += ` (${branch})`;
+				const sessionName = ctx.sessionManager.getSessionName();
+				if (sessionName) cwd += ` • ${sessionName}`;
+
+				let model = ctx.model?.id ?? "no-model";
+				if (ctx.model?.reasoning) {
+					const thinking = pi.getThinkingLevel();
+					model = thinking === "off" ? `${model} • thinking off` : `${model} • ${thinking}`;
+				}
+				if (ctx.model && footerData.getAvailableProviderCount() > 1) {
+					const withProvider = `(${ctx.model.provider}) ${model}`;
+					if (visibleWidth(withProvider) < width) model = withProvider;
+				}
+
+				const top = alignLine(theme.fg("dim", cwd), fusionText ? theme.fg("dim", fusionText) : "", width);
+				const bottom = alignLine(theme.fg("dim", stats.join(" ")), theme.fg("dim", model), width);
+				return [top, bottom];
+			},
+		};
+	});
+}
+
+function updateStatus(
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+	selectedIds: Set<string>,
+	judgeId: string | undefined,
+) {
+	installFusionFooter(pi, ctx, selectedIds, judgeId);
 }
 
 function persistSessionState(pi: ExtensionAPI, selectedIds: Set<string>, judgeId: string | undefined) {
@@ -160,7 +266,7 @@ function applySetup(
 		state.judgeId = Array.from(state.selectedIds)[0];
 	}
 	persistSessionState(pi, state.selectedIds, state.judgeId);
-	updateStatus(ctx, state.selectedIds, state.judgeId);
+	updateStatus(pi, ctx, state.selectedIds, state.judgeId);
 	const panelNames = Array.from(state.selectedIds).join(", ");
 	ctx.ui.notify(
 		`Panel: ${panelNames}\nJudge: ${state.judgeId}${warnings.length ? "\nWarnings: " + warnings.join("; ") : ""}`,
@@ -219,7 +325,7 @@ export default function (pi: ExtensionAPI) {
 
 			const sessionState = restoreSessionState(ctx);
 			if (sessionState?.selectedIds.size) {
-				updateStatus(ctx, sessionState.selectedIds, sessionState.judgeId);
+				updateStatus(pi, ctx, sessionState.selectedIds, sessionState.judgeId);
 			}
 
 			if (ctx.mode === "print") {
@@ -243,7 +349,7 @@ export default function (pi: ExtensionAPI) {
 			}
 
 			const sessionState = restoreSessionState(ctx);
-			if (sessionState?.selectedIds.size) updateStatus(ctx, sessionState.selectedIds, sessionState.judgeId);
+			if (sessionState?.selectedIds.size) updateStatus(pi, ctx, sessionState.selectedIds, sessionState.judgeId);
 			const overrides = sessionFusionOptions(ctx);
 
 			ctx.ui.setWorkingMessage("Running fusion report...");
@@ -471,7 +577,7 @@ export default function (pi: ExtensionAPI) {
 				return;
 			}
 			persistSessionState(pi, new Set(), undefined);
-			updateStatus(ctx, new Set(), undefined);
+			updateStatus(pi, ctx, new Set(), undefined);
 			ctx.ui.notify("Fusion panel cleared", "info");
 		},
 	});
@@ -479,14 +585,21 @@ export default function (pi: ExtensionAPI) {
 	pi.on("session_start", async (_event, ctx) => {
 		const state = restoreSessionState(ctx);
 		if (state?.selectedIds.size) {
-			updateStatus(ctx, state.selectedIds, state.judgeId);
+			updateStatus(pi, ctx, state.selectedIds, state.judgeId);
 		}
 	});
 
 	pi.on("session_tree", async (_event, ctx) => {
 		const state = restoreSessionState(ctx);
 		if (state?.selectedIds.size) {
-			updateStatus(ctx, state.selectedIds, state.judgeId);
+			updateStatus(pi, ctx, state.selectedIds, state.judgeId);
+		}
+	});
+
+	pi.on("model_select", async (_event, ctx) => {
+		const state = restoreSessionState(ctx);
+		if (state?.selectedIds.size) {
+			updateStatus(pi, ctx, state.selectedIds, state.judgeId);
 		}
 	});
 }
