@@ -103,10 +103,23 @@ answers from multiple perspectives.
 
 ### Slash commands
 
-- `/fusion <prompt>` — force the active pi model to call the `fusion` tool, then answer normally.
+Daily use is intentionally small:
+
+- `/fusion-setup` — choose panel and judge.
+- `/fusion` — toggle Fusion mode on/off for the current session.
+- `/fusion <prompt>` — force Fusion for one prompt, then let the active pi model answer normally.
+- `/fusion-status` — show current mode, panel, and judge.
+
+Advanced/debug commands remain available:
+
 - `/fusion-report <prompt>` — run fusion directly and write the raw diagnostic panel/judge report into the editor.
-- `/fusion-run` — open the setup UI, then enter a prompt, then ask the active model to use fusion in one flow.
-- `/fusion-setup` — open the model setup UI to choose panel and judge.
+- `/fusion-run` — advanced alias: setup, enter prompt, then force fusion once.
+- `/fusion-config` — view file config + session selection in a native settings list.
+- `/fusion-models` — plain text list of authed models.
+- `/fusion-init` — generate `.pi/fusion.json` (confirms before overwriting).
+- `/fusion-clear` — clear the current session selection.
+
+`/fusion-setup` controls:
   - **Type** to search/filter models.
   - **Tab** switches focus between search box and list.
   - **↑/↓** navigate the list (works from either focus).
@@ -115,28 +128,26 @@ answers from multiple perspectives.
   - **c** clears all selections.
   - **Enter** confirms.
   - **Esc** cancels.
-- `/fusion-config` — view file config + session selection in a native settings list.
-- `/fusion-models` — plain text list of authed models.
-- `/fusion-init` — generate `.pi/fusion.json` (confirms before overwriting).
-- `/fusion-clear` — clear the current session selection.
+### Simple workflow
 
-### Setup UI flow
+Configure once:
 
 ```
-/fusion-run
-  → opens Fusion Setup
-  → pick panel models and judge
-  → press Enter
-  → type prompt in editor
-  → active pi model calls fusion tool
-  → active pi model writes the final answer
+/fusion-setup
 ```
 
-Or configure once and run later:
+Turn session mode on/off:
 
 ```
-/fusion-setup    # choose models
-/fusion <prompt> # active model uses fusion with those models
+/fusion
+```
+
+When Fusion mode is on, normal prompts are automatically routed through the fusion tool before the active pi model answers.
+
+Force Fusion once without changing the toggle:
+
+```
+/fusion <prompt>
 ```
 
 ### Overrides

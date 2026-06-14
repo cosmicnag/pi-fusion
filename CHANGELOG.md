@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- Simplified operation around one session toggle.
+- `/fusion` with no args now toggles Fusion mode on/off for the current session.
+- `/fusion <prompt>` remains a one-shot force-fusion command.
+- Added `/fusion-status` for current mode/panel/judge.
+- Normal prompts are automatically transformed to use the fusion tool when Fusion mode is on.
+- Footer now shows `Fusion on/off • N panel • judge ...` on the right.
+- Kept `/fusion-report`, `/fusion-run`, `/fusion-config`, `/fusion-models`, and `/fusion-clear` as advanced/debug commands.
+
 ## 0.2.1
 
 - Refactored toward OpenRouter-style server-tool semantics.

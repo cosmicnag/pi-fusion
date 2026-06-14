@@ -31,6 +31,7 @@ interface ModelInfo {
 export interface FusionSetupState {
 	selectedIds: Set<string>;
 	judgeId: string | undefined;
+	enabled?: boolean;
 }
 
 function toModelInfo(available: Model<Api>[]): ModelInfo[] {
@@ -105,6 +106,7 @@ export async function selectFusionSetup(
 	const state: FusionSetupState = {
 		selectedIds: new Set(initial.selectedIds),
 		judgeId: initial.judgeId,
+		enabled: initial.enabled ?? false,
 	};
 
 	return ctx.ui.custom<FusionSetupState | null>((tui, theme, _kb, done) => {
@@ -219,7 +221,7 @@ export async function selectFusionSetup(
 			if (!state.judgeId || !state.selectedIds.has(state.judgeId)) {
 				state.judgeId = Array.from(state.selectedIds)[0];
 			}
-			done({ selectedIds: new Set(state.selectedIds), judgeId: state.judgeId });
+			done({ selectedIds: new Set(state.selectedIds), judgeId: state.judgeId, enabled: state.enabled });
 		}
 
 		selectList.onSelect = () => {
