@@ -17,6 +17,7 @@ import {
 	DEFAULT_MAX_TOOL_CALLS,
 	generateConfigExample,
 	loadConfig,
+	type FusionConfig,
 } from "./config.ts";
 import { buildRecentContextFromEntries, type FusionContextMode, normalizeContextTurns } from "./context.ts";
 import { resolveFusionModels, runFusion } from "./fusion.ts";
@@ -304,14 +305,18 @@ function buildInitialState(
 	ctx: ExtensionContext,
 	resolvedPanel: ModelWithDisplay[],
 	resolvedJudge: ModelWithDisplay,
+	configPanelTools?: FusionConfig["panelTools"],
 ): FusionSetupState {
 	const sessionState = restoreSessionState(ctx);
+	const configTools = typeof configPanelTools === "string" ? configPanelTools : undefined;
 	return {
 		selectedIds: sessionState?.selectedIds ?? new Set(resolvedPanel.map((m) => m.display)),
 		judgeId: sessionState?.judgeId ?? resolvedJudge.display,
 		enabled: normalizeMode(sessionState) === "forced",
 		mode: normalizeMode(sessionState),
-		panelTools: sessionState?.panelTools ?? "none",
+		panelTools: sessionState?.panelTools && sessionState.panelTools !== "none"
+			? sessionState.panelTools
+			: configTools ?? "none",
 		maxToolCalls: sessionState?.maxToolCalls ?? DEFAULT_MAX_TOOL_CALLS,
 		toolsConsented: sessionState?.toolsConsented ?? false,
 	};
@@ -553,6 +558,7 @@ export default function (pi: ExtensionAPI) {
 				ctx.ui.notify("No authed text models available.", "error");
 				return;
 			}
+			const config = loadConfig(ctx.cwd, ctx.isProjectTrusted());
 
 			const { panel, judge, warnings } = await resolveFusionModels(
 				ctx.cwd,
@@ -566,6 +572,7 @@ export default function (pi: ExtensionAPI) {
 				ctx,
 				panel.map((m) => ({ display: modelDisplay(m) })),
 				{ display: modelDisplay(judge) },
+				config.panelTools,
 			);
 
 			const state = await selectFusionSetup(ctx, available, initial);
