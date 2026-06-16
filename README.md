@@ -122,11 +122,11 @@ Generate a project-local template with `/fusion-init`, or write one by hand:
 ```json
 {
   "panel": [
-    "anthropic/claude-sonnet-4-5",
-    "openai/gpt-4.1",
-    "google/gemini-2.5-pro"
+    "openai/gpt-5.5",
+    "z-ai/glm-5.2",
+    "moonshotai/kimi-2.7"
   ],
-  "judge": "anthropic/claude-opus-4-5",
+  "judge": "anthropic/claude-opus-4-8",
   "maxPanelModels": 3,
   "maxPanelOutputTokens": 2048,
   "maxCompletionTokens": 4096,
@@ -150,7 +150,7 @@ Generate a project-local template with `/fusion-init`, or write one by hand:
 
 **Precedence.** Panel/judge come from session selection (`/fusion-setup`) → `fusion.json` → auto-selection (the tool cannot set them). Per-call tool params (`panel_tools`, `max_tool_calls`) override session → `fusion.json` → default.
 
-**How models are resolved.** Reference models as `provider/id` (a bare `id` matches by exact id across providers). Only authed models are used; a configured model that isn't authed is skipped with a warning. With no panel configured, fusion auto-selects a diverse set spread across providers. The judge defaults to your current model, falling back to the first panel model.
+**How models are resolved.** Reference models as `provider/id` (e.g. `openai/gpt-5.5`); a bare `id` matches by exact id across providers. Only authed models are used; a configured model that isn't authed is skipped with a warning. With no panel configured, fusion auto-selects a diverse set spread across providers. The judge defaults to your current model, falling back to the first panel model.
 
 ### Panel tools (multi-turn)
 
