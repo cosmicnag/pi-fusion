@@ -98,10 +98,7 @@ function modeLabel(mode: FusionMode): string {
 }
 
 function fusionFooterText(selectedIds: Set<string>, judgeId: string | undefined, mode: FusionMode = "available"): string | undefined {
-	if (selectedIds.size === 0) return mode === "off" ? "Fusion off" : undefined;
-	const panel = Array.from(selectedIds);
-	const judge = judgeId ?? panel[0];
-	return `${modeLabel(mode)} • ${panel.length} panel • judge ${judge}`;
+	return undefined;
 }
 
 /** Footer/status suffix describing panel tool access, when enabled. */
